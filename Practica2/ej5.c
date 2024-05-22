@@ -27,158 +27,177 @@ double dwalltime(){
 void *funcion(void *arg)
 {
     int id = *(int *)arg;
-    int parte = N / T;
-    int inicio = id * parte;
-    int limite = inicio + parte;
+    int sizeSection = N / T;
+    int inicio = id * sizeSection;
+    int limite = inicio + sizeSection;
     printf("Hilo id:%d\n", id);
     // Código que ejecutará cada hilo
 
 
-    //tengo que ordenar mi parte
+    //tengo que ordenar mi sizeSection
     int size, j, iteracion=0;
-    int puntA=0, puntB=0;
+    int puntI=0, puntD=0;
+    int puntB;
+    int finI,finD;
     int suma;
-    int puntAS=-1, puntBS=-1;    //en axi me guardo los que fueron mas grandes que B que estaban en A
-    double temp;
-    for(size = 2; size <= (limite-inicio); size*=2){ //limite-inicio tamanio total del vector
-        for (int i = 0; i < N/size; i++)
+    double *temp,*Aaxi,*Baxi;
+    Aaxi=A;
+    printf("Hilo id:%d  %.2f\n", id, Aaxi[0]);
+    Baxi=B;
+    for(size = 2; size <= sizeSection; size*=2){ //limite-inicio tamanio total del vector
+        for (int i = 0; i < sizeSection/size; i++)
         {
-            puntAS=-1;
-            puntBS=-1;
-            puntA=inicio+i*size;    //punto inicio vector A
-            puntB=puntA+size/2;    //punto inicio vector B
-            while (puntA!=puntB)
+            puntI=inicio+i*size;    //punto inicio vector I
+            puntB=puntI;
+            finI=puntI+size/2;
+            puntD=puntI+size/2;    //punto inicio vector D
+            finD=inicio+i*size+size;
+            while (puntI<finI && puntD<finD)
             {
-                if (puntAS==-1 && puntBS==-1){
-                    //si axi = -1 es que no hay ningun elemento en mi vector axiliar
-                    if (A[puntA]>A[puntB]){
-                        //el que esta en A es mas grande que el de B
-                        //por lo tanto tengo que mover al de A al vector axiliar(donde esta el valor de B)
-                        temp = A[puntB];
-                        A[puntB]=A[puntA];
-                        //pongo el de B en el lugar donde estaba en A
-                        A[puntA] = temp;
-                        //actualizo los punteros
-                        puntA++;
-                        puntAS = puntB;
-                        if(puntB+1<inicio+i*size+size){
-                            puntB++;//ojo cuando sumo B porque puede ser que me pase del vector
-                        }
-                    }else{
-                        //ahora tengo que el vector de A tiene el mas chiquito o igual
-                        //no tengo que mover nada solo actualizar los vectores
-                        puntA++;
-                    }
+                if (Aaxi[puntI]<Aaxi[puntD]){
+                    Baxi[puntB]=Aaxi[puntI];
+                    puntB++;
+                    puntI++;
                 }else{
-                    if (A[puntA]<=A[axi] && A[puntA]<=A[puntB]){
-                        //A sea el chiquito
-                        //actualizo los punteros
-                        puntA++;
-                        if (puntA==axi){
-                            //si es igual a axi es que el vector axi se termino
-                            axi=-1;
-                        }
-                    }else{
-                        if (A[axi]<A[puntB] && A[axi]<A[puntB]){
-                            //Axi sea el mas chiquito
-                            temp = A[puntA];
-                            A[puntA]=A[axi];
-                            A[axi]=A[puntB];
-                            A[puntB]=temp;
-                            
-                            //actualizo punteros
-                            puntA++;
-                            if (puntA==axi){
-                                //si es igual a axi es que el vector axi se termino
-                                axi=-1;
-                            }
-                            if(puntB+1<inicio+i*size+size){
-                                puntB++;//ojo cuando sumo B porque puede ser que me pase del vector
-                            }
-                        }else{
-                            //B sea el mas chiquito
-                            //intercambio A con B
-                            temp = A[puntA];
-                            A[puntA] = A[puntB];
-                            A[puntB] = temp;
-
-                            //actualizo punteros
-                            puntA++;
-                            if (puntA==axi){
-                                //si es igual a axi es que el vector axi se termino
-                                axi=-1;
-                            }
-                            if(puntB+1<inicio+i*size+size){
-                                puntB++;//ojo cuando sumo B porque puede ser que me pase del vector
-                            }
-                        }
-                        
-                    }
-                    
+                    Baxi[puntB]=Aaxi[puntD];
+                    puntB++;
+                    puntD++;
                 }
             }
+            while (puntI<finI){
+                Baxi[puntB]=Aaxi[puntI];
+                puntB++;
+                puntI++;
+            }
+            while (puntD<finD){
+                Baxi[puntB]=Aaxi[puntD];
+                puntB++;
+                puntD++;
+            }
         }
-        printf("size:%d\n",size);
-        for (int i = 0; i < N; i++)
+        temp = Baxi;
+        Baxi = Aaxi;
+        Aaxi = temp;
+        /*printf("id: %d size:%d\n",id,size);
+        for (int i = inicio; i < limite; i++)
         {
             if(!(i%size)){
                 printf("\t");
             }
-            printf("%.0f ",A[i]);
+            printf("%.0f ",Aaxi[i]);
         }
-        printf("\n");
+        printf("\n");*/
+        
     }
     //tengo que ver si quedo eleguido para seguir
-        //hago el merge
+    //hago el merge
 
     int hilosRestantes = T;
-
-    sumas[id]=suma;
-
+    
+    pthread_barrier_wait(&barreras[id%(hilosRestantes/2)]);
+    //sumas[id]=suma;
+    /*if(id%T==0){
+        printf("print completo Axi: %d ",id);
+        for (int i = 0; i < N; i++)
+        {
+            printf("%.0f ",Aaxi[i]);
+        }
+        printf("\n");
+    }*/
     while (id<hilosRestantes && hilosRestantes!=1)
     {
-        printf("hilo: %d, espera: %d \n",id,hilosRestantes/2);
+        //printf("hilo: %d, espera: %d \n",id,hilosRestantes/2);
         pthread_barrier_wait(&barreras[id%(hilosRestantes/2)]);
         hilosRestantes = hilosRestantes/2;
         if(id<hilosRestantes){
-            sumas[id] = sumas[id]+sumas[id+hilosRestantes];
+            printf("quien entro: %d \n",id);
+            //codigo a ejecutar
+            sizeSection = N / hilosRestantes;
+            inicio = id * sizeSection;
+            limite = inicio + sizeSection;
+
+            puntI=inicio;    //punto inicio vector I
+            puntB=puntI;
+            finI=inicio+sizeSection/2;
+            puntD=finI;    //punto inicio vector D
+            finD=limite;
+
+            printf("print restantes: %d \n",id);
+            for (int i = inicio; i < limite; i++)
+            {
+                printf("%.0f ",Aaxi[i]);
+            }
+            printf("\n");
+            
+            
+            while (puntI<finI && puntD<finD)
+            {
+                if (Aaxi[puntI]<Aaxi[puntD]){ 
+                    Baxi[puntB]=Aaxi[puntI];
+                    puntB++;
+                    puntI++;
+                }else{
+                    Baxi[puntB]=Aaxi[puntD];
+                    puntB++;
+                    puntD++;
+                }
+            }
+            while (puntI<finI){
+                Baxi[puntB]=Aaxi[puntI];
+                puntB++;
+                puntI++;
+            }
+            while (puntD<finD){
+                Baxi[puntB]=Aaxi[puntD];
+                puntB++;
+                puntD++;
+            }
+            temp = Baxi;
+            Baxi = Aaxi;
+            Aaxi = temp;
         }
     }
     
 
+    if(id == 0){
+        A=Aaxi;
+    }
     
-    cantTotal += suma;
-    printf("suma %d: %d \n",id,suma);
+    //cantTotal += suma;
+    //printf("suma %d: %d \n",id,suma);
     pthread_exit(NULL);
 }
 
 int main(int argc, char *argv[])
 {
-    //N = atoi(argv[1]);
-    //T = atoi(argv[2]);
-    N=16;
-    T=1;
+    N = atoi(argv[1]);
+    T = atoi(argv[2]);
     pthread_t misThreads[T];
     int threads_ids[T];
     int check=1;
 
     A = (double *)malloc(sizeof(double) * N);
+    B = (double *)malloc(sizeof(double) * N);
 
     int i,j;
     double timetick;
 
      for (i = 0; i < T/2; i++) {                //cant de hilos que se quedan frenados
-        pthread_barrier_init(&barreras[i], NULL, 1);//2 // Inicializa cada barrera del arreglo
+        pthread_barrier_init(&barreras[i], NULL, 2); // Inicializa cada barrera del arreglo
     }
 
-    double numeros[] = {3, 15, 27, 8, 12, 23, 4, 30, 19, 6, 25, 9, 17, 2, 21, 14};
-
-    //valor inicial a las matrices
+    // Inicializar el generador de números aleatorios
+    srand(time(NULL));
     for (i = 0; i < N; i++)
     {
-        //A[i]=N-i;
-        A[i]=numeros[i];
+        A[i]= (double) (rand() % 100);
     }
+
+    for (int i = 0; i < N; i++)
+    {
+        printf("%.0f ",A[i]);
+    }
+    printf("\n");
     
     pthread_mutex_init(&miMutex, NULL);
 
@@ -204,18 +223,21 @@ int main(int argc, char *argv[])
     //printf("\ncantTotal = %d",cantTotal);
     //printf("\ncantTotal = %d",sumas[0]);
 
-    for (int i = 0; i < N; i++)
+    for (int i = 0; i < N-1; i++)
     {
         printf("%.0f ",A[i]);
+        if(A[i]>A[i+1]){
+            check=0;
+        }
     }
 
     if (check)
     {
-        printf("Multiplicacion de matrices resultado correcto\n");
+        printf("lindaaaaa\n");
     }
     else
     {
-        printf("Multiplicacion de matrices resultado erroneo\n");
+        printf("Que boludoooo\n");
     }
 
     return 0;
