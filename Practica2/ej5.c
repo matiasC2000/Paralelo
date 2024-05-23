@@ -94,15 +94,19 @@ void *funcion(void *arg)
     int hilosRestantes = T;
     
     //sumas[id]=suma;
-    if(id%T==0){
-        printf("print completo Axi: %d ",id);
-        for (int i = 0; i < N; i++)
-        {
-            printf("%.0f ",A[i]);
+    int check=1;
+    printf("print completo Axi: %d ",id);
+    for (int i = inicio; i < limite-1; i++)
+    {
+        //printf("%.0f ",A[i]);
+        if(A[i]>A[i+1]){
+            check=0;
         }
-        printf("\n");
     }
-
+    if(check==1){
+        printf("\n%d: linda", id);
+    }
+    printf("\n");
     int cantComparacion = 1;
 
     while ((id%cantComparacion==0) && hilosRestantes!=1)
@@ -110,13 +114,15 @@ void *funcion(void *arg)
         //printf("hilo: %d, espera: %d \n",id,hilosRestantes/2);
         //pthread_barrier_wait(&barreras[id%(hilosRestantes/2)]);
         cantComparacion = cantComparacion*2;
+        printf("espero: %d, restantes: %d \n",id,hilosRestantes);
         pthread_barrier_wait(&barreras[id/cantComparacion]);
-        hilosRestantes = hilosRestantes/2;
-        if(id%cantComparacion == 0 && id<hilosRestantes){
-            printf("quien entro: %d \n",id);
+        printf("sali: %d, restantes: %d \n",id,hilosRestantes);
+        if(id%cantComparacion == 0 && id<=hilosRestantes){
+            hilosRestantes = hilosRestantes/2;
+            printf("quedo: %d, restantes: %d \n",id,hilosRestantes);
             //codigo a ejecutar
             sizeSection = N / hilosRestantes;
-            inicio = id * sizeSection;
+            inicio = (id/hilosRestantes) * sizeSection;
             limite = inicio + sizeSection;
 
             puntI=inicio;    //punto inicio vector I
@@ -125,12 +131,6 @@ void *funcion(void *arg)
             puntD=finI;    //punto inicio vector D
             finD=limite;
 
-            printf("print restantes: %d \n",id);
-            for (int i = inicio; i < limite; i++)
-            {
-                printf("%.0f ",A[i]);
-            }
-            printf("\n");
             
             
             while (puntI<finI && puntD<finD)
@@ -159,6 +159,12 @@ void *funcion(void *arg)
             {
                 A[i]=B[i];
             }
+            printf("print restantes id: %d \n",id);
+            for (int i = inicio; i < limite; i++)
+            {
+                printf("%.0f ",A[i]);
+            }
+            printf("\n");
         }
     }
     
@@ -172,7 +178,7 @@ int main(int argc, char *argv[])
     //N = atoi(argv[1]);
     //T = atoi(argv[2]);
     N = 16;
-    T = 2;
+    T = 4;
     pthread_t misThreads[T];
     int threads_ids[T];
     int check=1;
