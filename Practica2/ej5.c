@@ -40,10 +40,8 @@ void *funcion(void *arg)
     int puntB;
     int finI,finD;
     int suma;
-    double *temp,*Aaxi,*Baxi;
-    Aaxi=A;
-    printf("Hilo id:%d  %.2f\n", id, Aaxi[0]);
-    Baxi=B;
+    double *temp;
+    printf("Hilo id:%d  %.2f\n", id, A[0]);
     for(size = 2; size <= sizeSection; size*=2){ //limite-inicio tamanio total del vector
         for (int i = 0; i < sizeSection/size; i++)
         {
@@ -54,37 +52,38 @@ void *funcion(void *arg)
             finD=inicio+i*size+size;
             while (puntI<finI && puntD<finD)
             {
-                if (Aaxi[puntI]<Aaxi[puntD]){
-                    Baxi[puntB]=Aaxi[puntI];
+                if (A[puntI]<A[puntD]){
+                    B[puntB]=A[puntI];
                     puntB++;
                     puntI++;
                 }else{
-                    Baxi[puntB]=Aaxi[puntD];
+                    B[puntB]=A[puntD];
                     puntB++;
                     puntD++;
                 }
             }
             while (puntI<finI){
-                Baxi[puntB]=Aaxi[puntI];
+                B[puntB]=A[puntI];
                 puntB++;
                 puntI++;
             }
             while (puntD<finD){
-                Baxi[puntB]=Aaxi[puntD];
+                B[puntB]=A[puntD];
                 puntB++;
                 puntD++;
             }
         }
-        temp = Baxi;
-        Baxi = Aaxi;
-        Aaxi = temp;
+        for (int i = inicio; i < limite; i++)
+        {
+            A[i]=B[i];
+        }
         /*printf("id: %d size:%d\n",id,size);
         for (int i = inicio; i < limite; i++)
         {
             if(!(i%size)){
                 printf("\t");
             }
-            printf("%.0f ",Aaxi[i]);
+            printf("%.0f ",A[i]);
         }
         printf("\n");*/
         
@@ -94,22 +93,26 @@ void *funcion(void *arg)
 
     int hilosRestantes = T;
     
-    pthread_barrier_wait(&barreras[id%(hilosRestantes/2)]);
     //sumas[id]=suma;
-    /*if(id%T==0){
+    if(id%T==0){
         printf("print completo Axi: %d ",id);
         for (int i = 0; i < N; i++)
         {
-            printf("%.0f ",Aaxi[i]);
+            printf("%.0f ",A[i]);
         }
         printf("\n");
-    }*/
-    while (id<hilosRestantes && hilosRestantes!=1)
+    }
+
+    int cantComparacion = 1;
+
+    while ((id%cantComparacion==0) && hilosRestantes!=1)
     {
         //printf("hilo: %d, espera: %d \n",id,hilosRestantes/2);
-        pthread_barrier_wait(&barreras[id%(hilosRestantes/2)]);
+        //pthread_barrier_wait(&barreras[id%(hilosRestantes/2)]);
+        cantComparacion = cantComparacion*2;
+        pthread_barrier_wait(&barreras[id/cantComparacion]);
         hilosRestantes = hilosRestantes/2;
-        if(id<hilosRestantes){
+        if(id%cantComparacion == 0 && id<hilosRestantes){
             printf("quien entro: %d \n",id);
             //codigo a ejecutar
             sizeSection = N / hilosRestantes;
@@ -125,42 +128,38 @@ void *funcion(void *arg)
             printf("print restantes: %d \n",id);
             for (int i = inicio; i < limite; i++)
             {
-                printf("%.0f ",Aaxi[i]);
+                printf("%.0f ",A[i]);
             }
             printf("\n");
             
             
             while (puntI<finI && puntD<finD)
             {
-                if (Aaxi[puntI]<Aaxi[puntD]){ 
-                    Baxi[puntB]=Aaxi[puntI];
+                if (A[puntI]<A[puntD]){ 
+                    B[puntB]=A[puntI];
                     puntB++;
                     puntI++;
                 }else{
-                    Baxi[puntB]=Aaxi[puntD];
+                    B[puntB]=A[puntD];
                     puntB++;
                     puntD++;
                 }
             }
             while (puntI<finI){
-                Baxi[puntB]=Aaxi[puntI];
+                B[puntB]=A[puntI];
                 puntB++;
                 puntI++;
             }
             while (puntD<finD){
-                Baxi[puntB]=Aaxi[puntD];
+                B[puntB]=A[puntD];
                 puntB++;
                 puntD++;
             }
-            temp = Baxi;
-            Baxi = Aaxi;
-            Aaxi = temp;
+            for (int i = inicio; i < limite; i++)
+            {
+                A[i]=B[i];
+            }
         }
-    }
-    
-
-    if(id == 0){
-        A=Aaxi;
     }
     
     //cantTotal += suma;
@@ -170,8 +169,10 @@ void *funcion(void *arg)
 
 int main(int argc, char *argv[])
 {
-    N = atoi(argv[1]);
-    T = atoi(argv[2]);
+    //N = atoi(argv[1]);
+    //T = atoi(argv[2]);
+    N = 16;
+    T = 2;
     pthread_t misThreads[T];
     int threads_ids[T];
     int check=1;
@@ -182,7 +183,7 @@ int main(int argc, char *argv[])
     int i,j;
     double timetick;
 
-     for (i = 0; i < T/2; i++) {                //cant de hilos que se quedan frenados
+    for (i = 0; i < T/2; i++) {                //cant de hilos que se quedan frenados
         pthread_barrier_init(&barreras[i], NULL, 2); // Inicializa cada barrera del arreglo
     }
 
