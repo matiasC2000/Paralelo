@@ -8,9 +8,10 @@
 double *A,*B,*C;
 int N,T,cantTotal;
 double elemento=1;
-int sumas[8];
+int iguales=1;
 
 pthread_barrier_t barreras[8];
+pthread_barrier_t barreraGlobal;
 pthread_mutex_t miMutex;
 
 //Para calcular tiempo
@@ -109,7 +110,8 @@ void *funcion(void *arg)
     printf("\n");
     int cantComparacion = 1;
 
-    while ((id%cantComparacion==0) && hilosRestantes!=1)
+    //while ((id%cantComparacion==0) && hilosRestantes!=1)
+    while ((id%cantComparacion==0) && hilosRestantes!=2)
     {
         //printf("hilo: %d, espera: %d \n",id,hilosRestantes/2);
         //pthread_barrier_wait(&barreras[id%(hilosRestantes/2)]);
@@ -168,8 +170,34 @@ void *funcion(void *arg)
         }
     }
     
-    //cantTotal += suma;
-    //printf("suma %d: %d \n",id,suma);
+
+    //el de arriba tiene que cortar antes
+    
+    //duermo todos los hilos esperando a que ellos terminen
+    pthread_barrier_wait(&barreraGlobal);
+    
+
+    //tengo que recorrer la mitad del vector comparando los otros dos
+
+    //miestras que el u otro no lo encuentre lo comparo
+    int i=0;
+    int sizeVector=N/2;
+    sizeSection = sizeVector/T;
+    inicio = id*(sizeSection);
+    limite = inicio+sizeSection;
+    i=inicio;
+    while(iguales && i<limite){
+        //miro esta pos + total/2
+        if(A[i]!=A[i+sizeVector]){
+            //si es igual pongo = 0 y se corta el de todos
+            iguales=0;
+        }
+        i++;
+    }
+
+    //supongo que si es una variable compartida no la tengo que compartir ni reducir ni nada
+
+
     pthread_exit(NULL);
 }
 
@@ -183,6 +211,8 @@ int main(int argc, char *argv[])
     int threads_ids[T];
     int check=1;
 
+
+    //supongo que los dos vectores estan alocados de forma continua
     A = (double *)malloc(sizeof(double) * N);
     B = (double *)malloc(sizeof(double) * N);
 
@@ -192,12 +222,14 @@ int main(int argc, char *argv[])
     for (i = 0; i < T/2; i++) {                //cant de hilos que se quedan frenados
         pthread_barrier_init(&barreras[i], NULL, 2); // Inicializa cada barrera del arreglo
     }
+    pthread_barrier_init(&barreraGlobal, NULL, T);
 
     // Inicializar el generador de números aleatorios
     srand(time(NULL));
     for (i = 0; i < N; i++)
     {
         A[i]= (double) (rand() % 100);
+        //A[i+N/2] = A[i];
     }
 
     for (int i = 0; i < N; i++)
@@ -233,10 +265,17 @@ int main(int argc, char *argv[])
     for (int i = 0; i < N-1; i++)
     {
         printf("%.0f ",A[i]);
-        if(A[i]>A[i+1]){
+        if(A[i]>A[i+1]&& i+1 != N/2 ){
             check=0;
         }
     }
+
+    if(iguales){
+        printf("Son iguales\n");
+    }else{
+        printf("Son distinto\n");
+    }
+        
 
     if (check)
     {
