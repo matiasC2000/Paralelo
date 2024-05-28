@@ -3,191 +3,163 @@
 #include <pthread.h>
 #include <sys/time.h>
 
-double *A,*B;
-int N,T;
-int iguales=1;
+double *A, *B;
+int N, T;
+int iguales = 1;
 
 pthread_barrier_t barreras[8];
 pthread_barrier_t barreraGlobal;
 
+// Para calcular tiempo
+double dwalltime()
+{
+    double sec;
+    struct timeval tv;
 
-//Para calcular tiempo
-double dwalltime(){
-        double sec;
-        struct timeval tv;
-
-        gettimeofday(&tv,NULL);
-        sec = tv.tv_sec + tv.tv_usec/1000000.0;
-        return sec;
+    gettimeofday(&tv, NULL);
+    sec = tv.tv_sec + tv.tv_usec / 1000000.0;
+    return sec;
 }
 
-
-void *funcion(void *arg)
+void *merge_sort(void *arg)
 {
-    int id = *(int *)arg;
-    int sizeSection = N / T;
-    int inicio = id * sizeSection;
-    int limite = inicio + sizeSection;
-    // Código que ejecutará cada hilo
+    // Identificador del hilo y cálculo del tamaño de la sección que este hilo procesará
+    int thread_id = *(int *)arg;
+    int section_size = N / T;
+    int start_index = thread_id * section_size;
+    int end_index = start_index + section_size;
+    int merge_size, left_start, right_start, left_end, right_end, merge_index;
 
-
-    //tengo que ordenar mi sizeSection
-    int size;
-    int puntI=0, puntD=0;
-    int puntB;
-    int finI,finD;
-
-    for(size = 2; size <= sizeSection; size*=2){
-        for (int i = 0; i < sizeSection/size; i++)
-        {
-            puntI=inicio+i*size;    //punto inicio vector I
-            puntB=puntI;
-            finI=puntI+size/2;
-            puntD=puntI+size/2;    //punto inicio vector D
-            finD=inicio+i*size+size;
-            while (puntI<finI && puntD<finD)
-            {
-                if (A[puntI]<A[puntD]){
-                    B[puntB]=A[puntI];
-                    puntB++;
-                    puntI++;
-                }else{
-                    B[puntB]=A[puntD];
-                    puntB++;
-                    puntD++;
-                }
-            }
-            while (puntI<finI){
-                B[puntB]=A[puntI];
-                puntB++;
-                puntI++;
-            }
-            while (puntD<finD){
-                B[puntB]=A[puntD];
-                puntB++;
-                puntD++;
-            }
-        }
-        for (int i = inicio; i < limite; i++)
-        {
-            A[i]=B[i];
-        }
-        /*printf("id: %d size:%d\n",id,size);
-        for (int i = inicio; i < limite; i++)
-        {
-            if(!(i%size)){
-                printf("\t");
-            }
-            printf("%.0f ",A[i]);
-        }
-        printf("\n");*/
-        
-    }
-
-    
-    /*int check=1;
-    printf("print completo Axi: %d ",id);
-    for (int i = inicio; i < limite-1; i++)
+    // Ordenamiento de la sección asignada usando Merge Sort
+    for (merge_size = 2; merge_size <= section_size; merge_size *= 2)
     {
-        //printf("%.0f ",A[i]);
-        if(A[i]>A[i+1]){
-            check=0;
-        }
-    }
-    if(check==1){
-        printf("\n%d: linda", id);
-    }
-    printf("\n");*/
-    
-    int hilosRestantes = T;
-    int cantComparacion = 1;
+        for (int i = 0; i < section_size / merge_size; i++)
+        {
+            left_start = start_index + i * merge_size;             // Inicio de la mitad izquierda
+            right_start = left_start + merge_size / 2;             // Inicio de la mitad derecha
+            left_end = right_start;                                // Fin de la mitad izquierda
+            right_end = start_index + i * merge_size + merge_size; // Fin de la mitad derecha
+            merge_index = left_start;                              // Índice para fusionar en el arreglo B
 
-    while ((id%cantComparacion==0) && hilosRestantes!=2)
-    {
-        //printf("hilo: %d, espera: %d \n",id,hilosRestantes/2);
-        cantComparacion = cantComparacion*2;
-        //printf("espero: %d, restantes: %d \n",id,hilosRestantes);
-        pthread_barrier_wait(&barreras[id/cantComparacion]);
-        //printf("sali: %d, restantes: %d \n",id,hilosRestantes);
-        if(id%cantComparacion == 0 && id<=hilosRestantes){
-            hilosRestantes = hilosRestantes/2;
-            //printf("quedo: %d, restantes: %d \n",id,hilosRestantes);
-            //codigo a ejecutar
-            sizeSection = N / hilosRestantes;
-            inicio = (id/hilosRestantes) * sizeSection;
-            limite = inicio + sizeSection;
-
-            puntI=inicio;    //punto inicio vector I
-            puntB=puntI;
-            finI=inicio+sizeSection/2;
-            puntD=finI;    //punto inicio vector D
-            finD=limite;
-
-            
-            
-            while (puntI<finI && puntD<finD)
+            // Fusionar las dos mitades ordenadas
+            while (left_start < left_end && right_start < right_end)
             {
-                if (A[puntI]<A[puntD]){ 
-                    B[puntB]=A[puntI];
-                    puntB++;
-                    puntI++;
-                }else{
-                    B[puntB]=A[puntD];
-                    puntB++;
-                    puntD++;
+                if (A[left_start] < A[right_start])
+                {
+                    B[merge_index] = A[left_start];
+                    left_start++;
                 }
+                else
+                {
+                    B[merge_index] = A[right_start];
+                    right_start++;
+                }
+                merge_index++;
             }
-            while (puntI<finI){
-                B[puntB]=A[puntI];
-                puntB++;
-                puntI++;
-            }
-            while (puntD<finD){
-                B[puntB]=A[puntD];
-                puntB++;
-                puntD++;
-            }
-            for (int i = inicio; i < limite; i++)
+
+            // Copiar cualquier elemento restante de la mitad izquierda
+            while (left_start < left_end)
             {
-                A[i]=B[i];
+                B[merge_index] = A[left_start];
+                left_start++;
+                merge_index++;
             }
-            /*
-            printf("print restantes id: %d \n",id);
-            for (int i = inicio; i < limite; i++)
+
+            // Copiar cualquier elemento restante de la mitad derecha
+            while (right_start < right_end)
             {
-                printf("%.0f ",A[i]);
+                B[merge_index] = A[right_start];
+                right_start++;
+                merge_index++;
             }
-            printf("\n");*/
+        }
+
+        // Copiar los elementos ordenados de B a A para la siguiente iteración
+        for (int i = start_index; i < end_index; i++)
+        {
+            A[i] = B[i];
         }
     }
-    
 
-    //el de arriba tiene que cortar antes
-    
-    //duermo todos los hilos esperando a que ellos terminen
+    int remaining_threads = T;
+    int comparison_factor = 1;
+
+    // Sincronización y combinación de secciones ordenadas entre hilos
+    while ((thread_id % comparison_factor == 0) && remaining_threads != 2)
+    {
+        comparison_factor *= 2;
+        pthread_barrier_wait(&barreras[thread_id / comparison_factor]);
+
+        if (thread_id % comparison_factor == 0 && thread_id <= remaining_threads)
+        {
+            remaining_threads /= 2;
+            section_size = N / remaining_threads;
+            start_index = (thread_id / remaining_threads) * section_size;
+            end_index = start_index + section_size;
+
+            left_start = start_index;
+            right_start = left_start + section_size / 2;
+            left_end = right_start;
+            right_end = end_index;
+            merge_index = left_start;
+
+            // Fusionar las dos mitades ordenadas de las secciones combinadas
+            while (left_start < left_end && right_start < right_end)
+            {
+                if (A[left_start] < A[right_start])
+                {
+                    B[merge_index] = A[left_start];
+                    left_start++;
+                }
+                else
+                {
+                    B[merge_index] = A[right_start];
+                    right_start++;
+                }
+                merge_index++;
+            }
+
+            // Copiar cualquier elemento restante de la mitad izquierda
+            while (left_start < left_end)
+            {
+                B[merge_index] = A[left_start];
+                left_start++;
+                merge_index++;
+            }
+
+            // Copiar cualquier elemento restante de la mitad derecha
+            while (right_start < right_end)
+            {
+                B[merge_index] = A[right_start];
+                right_start++;
+                merge_index++;
+            }
+
+            // Copiar los elementos fusionados de B a A
+            for (int i = start_index; i < end_index; i++)
+            {
+                A[i] = B[i];
+            }
+        }
+    }
+
+    // Barrera global para sincronizar todos los hilos antes de la verificación
     pthread_barrier_wait(&barreraGlobal);
-    
 
-    //tengo que recorrer la mitad del vector comparando los otros dos
+    // Verificación de igualdad en paralelo
+    int half_size = N / 2;
+    section_size = half_size / T;
+    start_index = thread_id * section_size;
+    end_index = start_index + section_size;
 
-    //miestras que el u otro no lo encuentre lo comparo
-    int i=0;
-    int sizeVector=N/2;
-    sizeSection = sizeVector/T;
-    inicio = id*(sizeSection);
-    limite = inicio+sizeSection;
-    i=inicio;
-    while(iguales && i<limite){
-        //miro esta pos + total/2
-        if(A[i]!=A[i+sizeVector]){
-            //si es igual pongo = 0 y se corta el de todos
-            iguales=0;
+    for (int i = start_index; i < end_index; i++)
+    {
+        // Comparar cada elemento de la primera mitad con su correspondiente en la segunda mitad
+        if (A[i] != A[i + half_size])
+        {
+            iguales = 0;
         }
-        i++;
     }
-
-    //supongo que si es una variable compartida no la tengo que compartir ni reducir ni nada
-
 
     pthread_exit(NULL);
 }
@@ -196,30 +168,40 @@ int main(int argc, char *argv[])
 {
     N = atoi(argv[1]);
     T = atoi(argv[2]);
+    printf("N = %d, T = %d\n", N, T);
     pthread_t misThreads[T];
     int threads_ids[T];
-    int check=1;
+    int check = 1;
 
-
-    //supongo que los dos vectores estan alocados de forma continua
+    // supongo que los dos vectores estan alocados de forma continua
     A = (double *)malloc(sizeof(double) * N);
     B = (double *)malloc(sizeof(double) * N);
 
-    int i,j;
+    int i, j;
     double timetick;
 
-    for (i = 0; i < T/2; i++) {                //cant de hilos que se quedan frenados
+    for (i = 0; i < T / 2; i++)
+    {                                                // cant de hilos que se quedan frenados
         pthread_barrier_init(&barreras[i], NULL, 2); // Inicializa cada barrera del arreglo
     }
     pthread_barrier_init(&barreraGlobal, NULL, T);
 
     // Inicializar el generador de números aleatorios
     srand(time(NULL));
-    for (i = 0; i < N; i++)
-    {
-        A[i]= (double) (rand() % 100);
-        //A[i+N/2] = A[i];
-    }
+    // for (i = 0; i < N; i++)
+    // {
+    //     A[i] = (double)(rand() % 100);
+    //     // A[i+N/2] = A[i];
+    // }
+    A[0] = 1;
+    A[1] = 1;
+    A[2] = 0;
+    A[3] = 3;
+
+    A[4] = 2;
+    A[5] = 1;
+    A[6] = 1;
+    A[7] = 0;
 
     /*
     for (int i = 0; i < N; i++)
@@ -229,11 +211,11 @@ int main(int argc, char *argv[])
     printf("\n");*/
 
     timetick = dwalltime();
-    //llamo a los hilos
+    // llamo a los hilos
     for (int id = 0; id < T; id++)
     {
         threads_ids[id] = id;
-        pthread_create(&misThreads[id], NULL, &funcion, (void *)&threads_ids[id]);
+        pthread_create(&misThreads[id], NULL, &merge_sort, (void *)&threads_ids[id]);
     }
     for (int id = 0; id < T; id++)
     {
@@ -241,25 +223,30 @@ int main(int argc, char *argv[])
     }
     printf("Tiempo en segundos usando los dos en filas %f\n", dwalltime() - timetick);
 
-
-    for (i = 0; i < T/2; i++) {
+    for (i = 0; i < T / 2; i++)
+    {
         pthread_barrier_destroy(&barreras[i]); // Destruye cada barrera del arreglo
     }
 
-    for (int i = 0; i < N-1; i++)
+    for (int i = 0; i < N; i++)
     {
-        //printf("%.0f ",A[i]);
-        if(A[i]>A[i+1]&& i+1 != N/2 ){
-            check=0;
+        printf("%.0f ", A[i]);
+        if (A[i] > A[i + 1] && i + 1 != N / 2) // N/2 = 4"
+        {
+            check = 0;
         }
     }
 
-    if(iguales){
+    printf("\n");
+
+    if (iguales)
+    {
         printf("Son iguales\n");
-    }else{
+    }
+    else
+    {
         printf("Son distinto\n");
     }
-        
 
     if (check)
     {
