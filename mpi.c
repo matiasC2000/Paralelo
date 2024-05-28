@@ -150,8 +150,8 @@ int main(int argc, char *argv[])
     B = (double *)malloc(sizeof(double) * N);
 
     // Reservar memoria para las porciones locales de los arreglos
-    double *local_A = (double *)malloc(sizeof(double) * local_N);
-    double *local_B = (double *)malloc(sizeof(double) * local_N);
+    double *local_A = (double *)malloc(sizeof(double) * N);
+    double *local_B = (double *)malloc(sizeof(double) * N);
 
     if (rank == 0)
     {
@@ -195,13 +195,13 @@ int main(int argc, char *argv[])
 
             if (partner < size)
             {
-                int section_size = local_N * comparison_factor; // 2 * 1 = 2
+                int section_size = local_N * comparison_factor; // 2 * 2 = 4
                 int start_index = rank * local_N;               // 0 * 2 = 0
-                int mid_index = start_index + section_size / 2; // 0 + 1 = 1
-                int end_index = start_index + section_size;     // 0 + 2 = 2
+                int mid_index = start_index + section_size / 2; // 0 + 2 = 2
+                int end_index = start_index + section_size;     // 0 + 4 = 4
 
                 // Recibir los datos del proceso compañero
-                MPI_Recv(A + mid_index, section_size / 2, MPI_DOUBLE, partner, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+                MPI_Recv(local_A + section_size / 2, section_size / 2, MPI_DOUBLE, partner, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
 
                 printf("IF rank: %d\n", rank);
                 for (int i = start_index; i < end_index; i++)
@@ -211,7 +211,7 @@ int main(int argc, char *argv[])
                 printf("\n");
 
                 // Fusionar las dos mitades ordenadas de las secciones combinadas
-                merge(A, B, start_index, mid_index, end_index);
+                merge(local_A, local_A + section_size / 2, start_index, mid_index, end_index);
             }
         }
         else
@@ -221,6 +221,7 @@ int main(int argc, char *argv[])
 
             // Enviar mis datos al proceso compañero
             MPI_Send(local_A, local_N, MPI_DOUBLE, partner, 0, MPI_COMM_WORLD);
+            // [1,2,0,0,0,0,0,0]
             break;
         }
 
