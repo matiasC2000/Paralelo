@@ -25,6 +25,12 @@ void merge_sort(double *local_A, double *local_B, int local_N)
     int size, left_start, right_start, left_end, right_end, merge_index;
 
     // Ordenamiento usando Merge Sort
+    // [10, 20, 11, 2, 9, 21, 13, 18]
+
+    // [2, 9, 10, 11, 13, 18, 20, 21]
+    // 10, 20
+    // 2, 11
+    // [10, 20, 2, 11]
     for (size = 2; size <= local_N; size *= 2)
     {
         for (int i = 0; i < local_N / size; i++)
@@ -101,8 +107,11 @@ int main(int argc, char *argv[])
     local_N = N / size; // Calcular el tamaño de la porción local
 
     // Reservar memoria para los arreglos
-    A = (double *)malloc(sizeof(double) * N);
-    B = (double *)malloc(sizeof(double) * N);
+    if (rank == 0)
+    {
+        A = (double *)malloc(sizeof(double) * N);
+        B = (double *)malloc(sizeof(double) * N);
+    }
 
     // Reservar memoria para las porciones locales de los arreglos
     double *local_A = (double *)malloc(sizeof(double) * local_N);
@@ -134,15 +143,87 @@ int main(int argc, char *argv[])
     // Ordenar la sección local del arreglo
     merge_sort(local_A, local_B, local_N);
 
+    // Reducir la cantidad de procesos y combinar elementos ordenados
+    int remaining_processes = size;
+    int comparison_factor = 1;
+    while ((rank % comparison_factor == 0) && rank <= remaining_processes)
+    {
+        comparison_factor *= 2;
+        int partner = rank + comparison_factor / 2;
+
+        if (rank % comparison_factor == 0 && partner < size)
+        {
+            int section_size = local_N * comparison_factor;
+            int start_index = rank * local_N;
+            int end_index = start_index + section_size;
+
+            if (rank == 0)
+            {
+                // Recibir los datos de mi compañero
+                MPI_Recv(A + start_index + section_size / 2, section_size / 2, MPI_DOUBLE, partner, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+            }
+            else
+            {
+                // Enviar mis datos al proceso principal
+                MPI_Send(local_A, local_N, MPI_DOUBLE, rank - comparison_factor / 2, 0, MPI_COMM_WORLD);
+            }
+
+            if (rank == 0)
+            {
+                // Fusionar las dos mitades ordenadas de las secciones combinadas
+                int left_start = start_index;
+                int right_start = left_start + section_size / 2;
+                int left_end = right_start;
+                int right_end = end_index;
+                int merge_index = left_start;
+
+                while (left_start < left_end && right_start < right_end)
+                {
+                    if (A[left_start] < A[right_start])
+                    {
+                        B[merge_index] = A[left_start];
+                        left_start++;
+                    }
+                    else
+                    {
+                        B[merge_index] = A[right_start];
+                        right_start++;
+                    }
+                    merge_index++;
+                }
+
+                // Copiar cualquier elemento restante de la mitad izquierda
+                while (left_start < left_end)
+                {
+                    B[merge_index] = A[left_start];
+                    left_start++;
+                    merge_index++;
+                }
+
+                // Copiar cualquier elemento restante de la mitad derecha
+                while (right_start < right_end)
+                {
+                    B[merge_index] = A[right_start];
+                    right_start++;
+                    merge_index++;
+                }
+
+                // Copiar los elementos fusionados de B a A
+                for (int i = start_index; i < end_index; i++)
+                {
+                    A[i] = B[i];
+                }
+            }
+
+            remaining_processes /= 2;
+        }
+    }
+
     // Reunir los arreglos ordenados en el proceso principal
     MPI_Gather(local_A, local_N, MPI_DOUBLE, A, local_N, MPI_DOUBLE, 0, MPI_COMM_WORLD);
 
     if (rank == 0)
     {
-        // Ordenar las dos mitades del arreglo en el proceso principal
-        merge_sort(A, B, N / 2);                 // Ordenar la primera mitad
-        merge_sort(A + N / 2, B + N / 2, N / 2); // Ordenar la segunda mitad
-
         end_time = dwalltime(); // Detener el cronómetro
         printf("Tiempo en segundos usando MPI: %f\n", end_time - start_time);
 
@@ -172,13 +253,13 @@ int main(int argc, char *argv[])
             printf("%.0f ", A[i]);
         }
         printf("\n");
-    }
 
-    // Liberar la memoria
-    free(A);
-    free(B);
-    free(local_A);
-    free(local_B);
+        // Liberar la memoria
+        free(A);
+        free(B);
+        free(local_A);
+        free(local_B);
+    }
 
     // Finalizar MPI
     MPI_Finalize();
