@@ -82,6 +82,8 @@ void merge(double *A, double *B, int start_index, int mid_index, int end_index)
     int left_start = start_index;
     int right_start = mid_index;
     int merge_index = start_index;
+    printf("Primer elemento de A izquierdo: %0.f\n", A[left_start]);
+    printf("Primer elemento de A derecho: %0.f\n", A[right_start]);
 
     while (left_start < mid_index && right_start < end_index)
     {
@@ -118,6 +120,7 @@ void merge(double *A, double *B, int start_index, int mid_index, int end_index)
     for (int i = start_index; i < end_index; i++)
     {
         A[i] = B[i];
+        printf("A[i]: %0.f\n", A[i]);
     }
 }
 
@@ -147,7 +150,6 @@ int main(int argc, char *argv[])
 
     // Reservar memoria para los arreglos
     A = (double *)malloc(sizeof(double) * N);
-    B = (double *)malloc(sizeof(double) * N);
 
     // Reservar memoria para las porciones locales de los arreglos
     double *local_A = (double *)malloc(sizeof(double) * N);
@@ -182,9 +184,7 @@ int main(int argc, char *argv[])
     int remaining_processes = size;
     int comparison_factor = 1;
 
-    // printf("rank: %d, size: %d\n", rank, size);
-
-    while (remaining_processes > 1)
+    while (remaining_processes > 2)
     {
         comparison_factor *= 2;
 
@@ -195,23 +195,28 @@ int main(int argc, char *argv[])
 
             if (partner < size)
             {
-                int section_size = local_N * comparison_factor; // 2 * 2 = 4
-                int start_index = rank * local_N;               // 0 * 2 = 0
-                int mid_index = start_index + section_size / 2; // 0 + 2 = 2
-                int end_index = start_index + section_size;     // 0 + 4 = 4
+                int section_size = local_N * comparison_factor; // 2 * 2 = 4 8
+                int start_index = 0;                            // 0 * 2 = 0 0
+                int mid_index = start_index + section_size / 2; // 0 + 2 = 2 4
+                int end_index = start_index + section_size;     // 0 + 4 = 4 8
 
                 // Recibir los datos del proceso compañero
-                MPI_Recv(local_A + section_size / 2, section_size / 2, MPI_DOUBLE, partner, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+                MPI_Recv(local_A + mid_index, section_size, MPI_DOUBLE, partner, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
 
-                printf("IF rank: %d\n", rank);
-                for (int i = start_index; i < end_index; i++)
+                printf("rank: %d recibió: ", rank);
+                for (int i = start_index; i < mid_index; i++)
                 {
-                    printf("%.0f ", A[i]);
+                    printf("%.0f ", local_A[i]);
+                }
+                printf("\n");
+                for (int i = mid_index; i < end_index; i++)
+                {
+                    printf("%.0f ", local_A[i]);
                 }
                 printf("\n");
 
                 // Fusionar las dos mitades ordenadas de las secciones combinadas
-                merge(local_A, local_A + section_size / 2, start_index, mid_index, end_index);
+                merge(local_A, local_B, start_index, mid_index, end_index);
             }
         }
         else
@@ -220,15 +225,12 @@ int main(int argc, char *argv[])
             printf("ELSE rank: %d, partner: %d\n", rank, partner);
 
             // Enviar mis datos al proceso compañero
-            MPI_Send(local_A, local_N, MPI_DOUBLE, partner, 0, MPI_COMM_WORLD);
-            // [1,2,0,0,0,0,0,0]
+            MPI_Send(local_A, local_N * comparison_factor, MPI_DOUBLE, partner, 0, MPI_COMM_WORLD);
             break;
         }
 
         remaining_processes /= 2;
     }
-    // Reunir los arreglos ordenados en el proceso principal
-    // MPI_Gather(local_A, local_N, MPI_DOUBLE, A, local_N, MPI_DOUBLE, 0, MPI_COMM_WORLD);
 
     if (rank == 0)
     {
@@ -265,7 +267,6 @@ int main(int argc, char *argv[])
 
     // Liberar la memoria
     free(A);
-    free(B);
     free(local_A);
     free(local_B);
 
