@@ -119,74 +119,13 @@ void merge(double *A, double *B, int start_index, int mid_index, int end_index)
     }
 }
 
-
-void proceso0(){
-
-}
-
-void procesoOtros(){
-
-}
-
-
-
-int main(int argc, char *argv[])
-{
-    // Definición de las variables globales
-    double *A, *B;
-    int N;
-    int rank, size, local_N;
-    double start_time, end_time;
+void funcionComun(int rank, int size,int N,int *global_iguales, double *A){
     int local_iguales = 1;
-    int global_iguales;
-
-    // Inicializar MPI
-    MPI_Init(&argc, &argv);
-    MPI_Comm_rank(MPI_COMM_WORLD, &rank); // Obtener el rango del proceso actual
-    MPI_Comm_size(MPI_COMM_WORLD, &size); // Obtener el número total de procesos
-
-    // Verificar si se ha proporcionado el tamaño del arreglo
-    if (argc < 2)
-    {
-        if (rank == 0)
-        {
-            printf("Uso: %s <N>\n", argv[0]);
-        }
-        MPI_Finalize(); // Finalizar MPI
-        return 1;
-    }
-
-    N = atoi(argv[1]);  // Convertir el argumento N a entero
-    local_N = N / size; // Calcular el tamaño de la porción local
-
+    int local_N = N / size; // Calcular el tamaño de la porción local
     
-
     // Reservar memoria para las porciones locales de los arreglos
     double *local_A = (double *)malloc(sizeof(double) * N);
     double *local_B = (double *)malloc(sizeof(double) * N);
-
-    if (rank == 0)
-    {
-        // Reservar memoria para los arreglos
-        A = (double *)malloc(sizeof(double) * N);
-        // Inicializar el generador de números aleatorios y el arreglo A en el proceso principal
-        srand(time(NULL));
-        for (int i = 0; i < N / 2; i++)
-        {
-            A[i] = (double)(rand() % 100); // Llenar la primera mitad del arreglo A con valores aleatorios
-            A[i + N / 2] = A[i];           // Copiar la primera mitad del arreglo A a la segunda mitad
-        }
-
-        // Imprimir el arreglo original
-        /*for (int i = 0; i < N; i++)
-        {
-            printf("%.0f ", A[i]);
-        }
-        printf("\n");
-        */
-
-        start_time = dwalltime(); // Iniciar el cronómetro
-    }
 
     // Dividir el trabajo entre los procesos
     MPI_Scatter(A, local_N, MPI_DOUBLE, local_A, local_N, MPI_DOUBLE, 0, MPI_COMM_WORLD);
@@ -262,41 +201,100 @@ int main(int argc, char *argv[])
         }
     }
 
-    MPI_Reduce(&local_iguales, &global_iguales, 1, MPI_INT, MPI_LAND, 0, MPI_COMM_WORLD);
+    MPI_Reduce(&local_iguales, global_iguales, 1, MPI_INT, MPI_LAND, 0, MPI_COMM_WORLD);
 
-    if (rank == 0)
-    {
-        end_time = dwalltime(); // Detener el cronómetro
-        printf("Tiempo en segundos usando MPI: %f\n", end_time - start_time);
-    }
-
-    // Imprimir el resultado de la verificación
-    if (rank == 0)
-    {
-        if (global_iguales)
-        {
-            printf("Son iguales\n");
-        }
-        else
-        {
-            printf("Son distintos\n");
-        }
-
-        /*
-        // Imprimir el arreglo ordenado
-        for (int i = 0; i < N; i++)
-        {
-            printf("%.0f ", local_A[i]);
-        }
-        printf("\n");*/
-    }
-
-    if(rank == 0){
-        // Liberar la memoria
-        free(A);
-    }
     free(local_A);
     free(local_B);
+}
+
+
+void proceso0(int rank, int N,int  size){
+    double *A;
+    double start_time, end_time;
+    int global_iguales;
+
+    // Reservar memoria para los arreglos
+    A = (double *)malloc(sizeof(double) * N);
+    // Inicializar el generador de números aleatorios y el arreglo A en el proceso principal
+    srand(time(NULL));
+    for (int i = 0; i < N / 2; i++)
+    {
+        A[i] = (double)(rand() % 100); // Llenar la primera mitad del arreglo A con valores aleatorios
+        //A[i + N / 2] = A[i];           // Copiar la primera mitad del arreglo A a la segunda mitad
+    }
+    // Imprimir el arreglo original
+    /*for (int i = 0; i < N; i++)
+    {
+        printf("%.0f ", A[i]);
+    }
+    printf("\n");
+    */
+
+    start_time = dwalltime(); // Iniciar el cronómetro
+
+    funcionComun(rank, size, N, &global_iguales, A);
+
+    end_time = dwalltime(); // Detener el cronómetro
+    printf("Tiempo en segundos usando MPI: %f\n", end_time - start_time);
+    
+    // Imprimir el resultado de la verificación
+    if (global_iguales)
+    {
+        printf("Son iguales\n");
+    }
+    else
+    {
+        printf("Son distintos\n");
+    }
+
+    /*
+    // Imprimir el arreglo ordenado
+    for (int i = 0; i < N; i++)
+    {
+        printf("%.0f ", local_A[i]);
+    }
+    printf("\n");
+    */
+    
+    // Liberar la memoria
+    free(A);
+}
+
+void procesoOtros(int rank, int N,int  size){
+    funcionComun(rank, size, N, NULL, NULL);
+}
+
+
+
+int main(int argc, char *argv[])
+{
+    // Definición de las variables globales
+    int N;
+    int rank, size;
+
+    // Inicializar MPI
+    MPI_Init(&argc, &argv);
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank); // Obtener el rango del proceso actual
+    MPI_Comm_size(MPI_COMM_WORLD, &size); // Obtener el número total de procesos
+
+    // Verificar si se ha proporcionado el tamaño del arreglo
+    if (argc < 2)
+    {
+        if (rank == 0)
+        {
+            printf("Uso: %s <N>\n", argv[0]);
+        }
+        MPI_Finalize(); // Finalizar MPI
+        return 1;
+    }
+    N = atoi(argv[1]);  // Convertir el argumento N a entero
+
+    if (rank == 0)
+    {
+        proceso0(rank, N,size);
+    }else{
+        procesoOtros(rank, N,size);
+    }
 
     // Finalizar MPI
     MPI_Finalize();
