@@ -4,10 +4,6 @@
 #include <sys/time.h>
 #include <time.h>
 
-// Definición de las variables globales
-double *A, *B;
-int N;
-
 // Función para calcular el tiempo
 double dwalltime()
 {
@@ -123,8 +119,22 @@ void merge(double *A, double *B, int start_index, int mid_index, int end_index)
     }
 }
 
+
+void proceso0(){
+
+}
+
+void procesoOtros(){
+
+}
+
+
+
 int main(int argc, char *argv[])
 {
+    // Definición de las variables globales
+    double *A, *B;
+    int N;
     int rank, size, local_N;
     double start_time, end_time;
     int local_iguales = 1;
@@ -149,8 +159,7 @@ int main(int argc, char *argv[])
     N = atoi(argv[1]);  // Convertir el argumento N a entero
     local_N = N / size; // Calcular el tamaño de la porción local
 
-    // Reservar memoria para los arreglos
-    A = (double *)malloc(sizeof(double) * N);
+    
 
     // Reservar memoria para las porciones locales de los arreglos
     double *local_A = (double *)malloc(sizeof(double) * N);
@@ -158,6 +167,8 @@ int main(int argc, char *argv[])
 
     if (rank == 0)
     {
+        // Reservar memoria para los arreglos
+        A = (double *)malloc(sizeof(double) * N);
         // Inicializar el generador de números aleatorios y el arreglo A en el proceso principal
         srand(time(NULL));
         for (int i = 0; i < N / 2; i++)
@@ -280,8 +291,10 @@ int main(int argc, char *argv[])
         printf("\n");*/
     }
 
-    // Liberar la memoria
-    free(A);
+    if(rank == 0){
+        // Liberar la memoria
+        free(A);
+    }
     free(local_A);
     free(local_B);
 
