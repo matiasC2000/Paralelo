@@ -5,7 +5,7 @@
 #include <time.h>
 
 // Definición de las variables globales
-double *A, *B;
+double *A;
 int N;
 int iguales = 1;
 
@@ -149,8 +149,10 @@ int main(int argc, char *argv[])
     local_N = N / size; // Calcular el tamaño de la porción local
 
     // Reservar memoria para los arreglos
-    A = (double *)malloc(sizeof(double) * N);
-
+    if (rank == 0)
+    {
+        A = (double *)malloc(sizeof(double) * N);
+    }
     // Reservar memoria para las porciones locales de los arreglos
     double *local_A = (double *)malloc(sizeof(double) * N);
     double *local_B = (double *)malloc(sizeof(double) * N);
@@ -158,12 +160,23 @@ int main(int argc, char *argv[])
     if (rank == 0)
     {
         // Inicializar el generador de números aleatorios y el arreglo A en el proceso principal
-        srand(time(NULL));
-        for (int i = 0; i < N / 2; i++)
-        {
-            A[i] = (double)(rand() % 100); // Llenar la primera mitad del arreglo A con valores aleatorios
-            A[i + N / 2] = A[i];           // Copiar la primera mitad del arreglo A a la segunda mitad
-        }
+        // srand(time(NULL));
+        // for (int i = 0; i < N / 2; i++)
+        // {
+        //     A[i] = (double)(rand() % 100); // Llenar la primera mitad del arreglo A con valores aleatorios
+        //     A[i + N / 2] = A[i];           // Copiar la primera mitad del arreglo A a la segunda mitad
+        // }
+
+        // }
+        A[0] = 1;
+        A[1] = 1;
+        A[2] = 0;
+        A[3] = 2;
+
+        A[4] = 2;
+        A[5] = 1;
+        A[6] = 1;
+        A[7] = 0;
 
         // Imprimir el arreglo original
         for (int i = 0; i < N; i++)
@@ -184,7 +197,7 @@ int main(int argc, char *argv[])
     int remaining_processes = size;
     int comparison_factor = 1;
 
-    while (remaining_processes > 2)
+    while (remaining_processes > 1)
     {
         comparison_factor *= 2;
 
@@ -216,7 +229,10 @@ int main(int argc, char *argv[])
                 printf("\n");
 
                 // Fusionar las dos mitades ordenadas de las secciones combinadas
-                merge(local_A, local_B, start_index, mid_index, end_index);
+                if (remaining_processes > 2)
+                {
+                    merge(local_A, local_B, start_index, mid_index, end_index);
+                }
             }
         }
         else
@@ -240,7 +256,7 @@ int main(int argc, char *argv[])
         // Verificar si las dos mitades del arreglo son iguales
         for (int i = 0; i < N / 2; i++)
         {
-            if (A[i] != A[i + N / 2])
+            if (local_A[i] != local_A[i + N / 2])
             {
                 iguales = 0;
                 break;
@@ -260,13 +276,16 @@ int main(int argc, char *argv[])
         // Imprimir el arreglo ordenado
         for (int i = 0; i < N; i++)
         {
-            printf("%.0f ", A[i]);
+            printf("%.0f ", local_A[i]);
         }
         printf("\n");
     }
-
+    printf("Llego el rank: %d\n", rank);
     // Liberar la memoria
-    free(A);
+    if (rank == 0)
+    {
+        free(A);
+    }
     free(local_A);
     free(local_B);
 
