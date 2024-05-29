@@ -187,10 +187,10 @@ int main(int argc, char *argv[])
 
     // Inicializar el generador de números aleatorios
     srand(time(NULL));
-    for (i = 0; i < N; i++)
+    for (i = 0; i < N/2; i++)
     {
         A[i] = (double)(rand() % 1000);
-        // A[i+N/2] = A[i];
+        A[i+N/2] = A[i];
     }
 
     /*
@@ -248,6 +248,9 @@ int main(int argc, char *argv[])
     {
         printf("estan desordenados\n");
     }
+
+    free(A);
+    free(B);
 
     return 0;
 }
