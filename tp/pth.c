@@ -90,11 +90,11 @@ void *merge_sort(void *arg)
         comparison_factor *= 2;
         pthread_barrier_wait(&barreras[thread_id / comparison_factor]);
 
-        if (thread_id % comparison_factor == 0 && thread_id <= remaining_threads)
+        if (thread_id % comparison_factor == 0)// && thread_id <= remaining_threads)
         {
             remaining_threads /= 2;
             section_size = N / remaining_threads;
-            start_index = (thread_id / remaining_threads) * section_size;
+            start_index = (thread_id / (comparison_factor)) * section_size;
             end_index = start_index + section_size;
 
             left_start = start_index;
@@ -220,7 +220,16 @@ int main(int argc, char *argv[])
         pthread_barrier_destroy(&barreras[i]); // Destruye cada barrera del arreglo
     }
 
-    for (int i = 0; i < N; i++)
+    for (int i = 0; i < (N/2)-1; i++)
+    {
+        //printf("%.0f ", A[i]);
+        if (A[i] > A[i + 1] && i + 1 != N / 2) // N/2 = 4"
+        {
+            check = 0;
+        }
+    }
+
+    for (int i = N/2; i < N-1; i++)
     {
         //printf("%.0f ", A[i]);
         if (A[i] > A[i + 1] && i + 1 != N / 2) // N/2 = 4"
