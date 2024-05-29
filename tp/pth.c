@@ -7,7 +7,7 @@ double *A, *B;
 int N, T;
 int iguales = 1;
 
-pthread_barrier_t barreras[8];
+pthread_barrier_t barreras[64];
 pthread_barrier_t barreraGlobal;
 
 // Para calcular tiempo
@@ -83,65 +83,94 @@ void *merge_sort(void *arg)
 
     int remaining_threads = T;
     int comparison_factor = 1;
+    int elDivisor = 2;
+    int meVoy = 1;
 
     // Sincronización y combinación de secciones ordenadas entre hilos
-    while ((thread_id % comparison_factor == 0) && remaining_threads != 2)
+    while (remaining_threads > 1 && meVoy)
     {
         comparison_factor *= 2;
-        pthread_barrier_wait(&barreras[thread_id / comparison_factor]);
 
-        if (thread_id % comparison_factor == 0)// && thread_id <= remaining_threads)
+        if (thread_id % comparison_factor == 0)//(thread_id % elDivisor == 0)
         {
+            //quien se queda
+            int esperoEn = thread_id/elDivisor;
+            //printf("id: %d, espera en: %d\n",thread_id,esperoEn);
+            //pthread_barrier_wait(&barreras[esperoEn]);
+            
+            int partner = thread_id + comparison_factor / 2;
             remaining_threads /= 2;
-            section_size = N / remaining_threads;
-            start_index = (thread_id / (comparison_factor)) * section_size;
-            end_index = start_index + section_size;
-
-            left_start = start_index;
-            right_start = left_start + section_size / 2;
-            left_end = right_start;
-            right_end = end_index;
-            merge_index = left_start;
-
-            // Fusionar las dos mitades ordenadas de las secciones combinadas
-            while (left_start < left_end && right_start < right_end)
+            if (partner < T)
             {
-                if (A[left_start] < A[right_start])
-                {
-                    B[merge_index] = A[left_start];
-                    left_start++;
+                //espero como en mpi en mi id "que el mensaje llegue a mi"
+                printf("id: %d, espera en: %d\n",thread_id,partner);
+                pthread_barrier_wait(&barreras[partner]);
+                if(remaining_threads>1){
+                    //aca lo ordeno
+                    section_size = (int) (N / remaining_threads);
+                    start_index = (thread_id / elDivisor) * section_size;
+                    end_index = start_index + section_size;
+
+                    printf("id: %d s:%d e:%d r: %d\n",thread_id, start_index, end_index,remaining_threads);
+
+                    left_start = start_index;
+                    right_start = left_start + section_size / 2;
+                    left_end = right_start;
+                    right_end = end_index;
+                    merge_index = left_start;
+
+                    // Fusionar las dos mitades ordenadas de las secciones combinadas
+                    while (left_start < left_end && right_start < right_end)
+                    {
+                        if (A[left_start] < A[right_start])
+                        {
+                            B[merge_index] = A[left_start];
+                            left_start++;
+                        }
+                        else
+                        {
+                            B[merge_index] = A[right_start];
+                            right_start++;
+                        }
+                        merge_index++;
+                    }
+
+                    // Copiar cualquier elemento restante de la mitad izquierda
+                    while (left_start < left_end)
+                    {
+                        B[merge_index] = A[left_start];
+                        left_start++;
+                        merge_index++;
+                    }
+
+                    // Copiar cualquier elemento restante de la mitad derecha
+                    while (right_start < right_end)
+                    {
+                        B[merge_index] = A[right_start];
+                        right_start++;
+                        merge_index++;
+                    }
+
+                    // Copiar los elementos fusionados de B a A
+                    for (int i = start_index; i < end_index; i++)
+                    {
+                        A[i] = B[i];
+                    }
                 }
-                else
-                {
-                    B[merge_index] = A[right_start];
-                    right_start++;
-                }
-                merge_index++;
             }
-
-            // Copiar cualquier elemento restante de la mitad izquierda
-            while (left_start < left_end)
-            {
-                B[merge_index] = A[left_start];
-                left_start++;
-                merge_index++;
-            }
-
-            // Copiar cualquier elemento restante de la mitad derecha
-            while (right_start < right_end)
-            {
-                B[merge_index] = A[right_start];
-                right_start++;
-                merge_index++;
-            }
-
-            // Copiar los elementos fusionados de B a A
-            for (int i = start_index; i < end_index; i++)
-            {
-                A[i] = B[i];
-            }
+            elDivisor = elDivisor*2;
+        }else{
+            //el que se va
+            int esperoEn = thread_id/elDivisor;
+            //int partner = thread_id - comparison_factor / 2;
+            int partner = thread_id;
+            printf("id: %d, espera ab en: %d r:%d\n",thread_id,partner,remaining_threads);
+            pthread_barrier_wait(&barreras[partner]);
+            meVoy = 0;
+            break;
         }
     }
+    printf("f: %d\n",thread_id);
 
     // Barrera global para sincronizar todos los hilos antes de la verificación
     pthread_barrier_wait(&barreraGlobal);
@@ -179,7 +208,7 @@ int main(int argc, char *argv[])
     int i, j;
     double timetick;
 
-    for (i = 0; i < T / 2; i++)
+    for (i = 0; i < T ; i++)
     {                                                // cant de hilos que se quedan frenados
         pthread_barrier_init(&barreras[i], NULL, 2); // Inicializa cada barrera del arreglo
     }
@@ -189,16 +218,16 @@ int main(int argc, char *argv[])
     srand(time(NULL));
     for (i = 0; i < N/2; i++)
     {
-        A[i] = (double)(rand() % 1000);
+        A[i] = (double)(rand() % 100);
         A[i+N/2] = A[i];
     }
 
-    /*
+    
     for (int i = 0; i < N; i++)
     {
         printf("%.0f ",A[i]);
     }
-    printf("\n");*/
+    printf("\n");
 
     timetick = dwalltime();
 
@@ -222,7 +251,7 @@ int main(int argc, char *argv[])
 
     for (int i = 0; i < (N/2)-1; i++)
     {
-        //printf("%.0f ", A[i]);
+        printf("%.0f ", A[i]);
         if (A[i] > A[i + 1] && i + 1 != N / 2) // N/2 = 4"
         {
             check = 0;
@@ -231,7 +260,7 @@ int main(int argc, char *argv[])
 
     for (int i = N/2; i < N-1; i++)
     {
-        //printf("%.0f ", A[i]);
+        printf("%.0f ", A[i]);
         if (A[i] > A[i + 1] && i + 1 != N / 2) // N/2 = 4"
         {
             check = 0;
