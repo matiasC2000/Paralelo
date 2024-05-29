@@ -168,7 +168,6 @@ int main(int argc, char *argv[])
 {
     N = atoi(argv[1]);
     T = atoi(argv[2]);
-    printf("N = %d, T = %d\n", N, T);
     pthread_t misThreads[T];
     int threads_ids[T];
     int check = 1;
@@ -188,20 +187,11 @@ int main(int argc, char *argv[])
 
     // Inicializar el generador de números aleatorios
     srand(time(NULL));
-    // for (i = 0; i < N; i++)
-    // {
-    //     A[i] = (double)(rand() % 100);
-    //     // A[i+N/2] = A[i];
-    // }
-    A[0] = 1;
-    A[1] = 1;
-    A[2] = 0;
-    A[3] = 3;
-
-    A[4] = 2;
-    A[5] = 1;
-    A[6] = 1;
-    A[7] = 0;
+    for (i = 0; i < N; i++)
+    {
+        A[i] = (double)(rand() % 1000);
+        // A[i+N/2] = A[i];
+    }
 
     /*
     for (int i = 0; i < N; i++)
@@ -211,6 +201,7 @@ int main(int argc, char *argv[])
     printf("\n");*/
 
     timetick = dwalltime();
+
     // llamo a los hilos
     for (int id = 0; id < T; id++)
     {
@@ -221,6 +212,7 @@ int main(int argc, char *argv[])
     {
         pthread_join(misThreads[id], NULL);
     }
+
     printf("Tiempo en segundos usando los dos en filas %f\n", dwalltime() - timetick);
 
     for (i = 0; i < T / 2; i++)
@@ -230,7 +222,7 @@ int main(int argc, char *argv[])
 
     for (int i = 0; i < N; i++)
     {
-        printf("%.0f ", A[i]);
+        //printf("%.0f ", A[i]);
         if (A[i] > A[i + 1] && i + 1 != N / 2) // N/2 = 4"
         {
             check = 0;

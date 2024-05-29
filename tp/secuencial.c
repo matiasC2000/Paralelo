@@ -5,14 +5,10 @@
 #define ORDENXFILAS 0
 #define ORDENXCOLUMNAS
 
-double *A,*B,*C;
+double *A,*B;
 int N,T,cantTotal;
 double elemento=1;
 int iguales=1;
-
-pthread_barrier_t barreras[8];
-pthread_barrier_t barreraGlobal;
-pthread_mutex_t miMutex;
 
 //Para calcular tiempo
 double dwalltime(){
