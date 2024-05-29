@@ -81,8 +81,8 @@ void merge(double *A, double *B, int start_index, int mid_index, int end_index)
     int left_start = start_index;
     int right_start = mid_index;
     int merge_index = start_index;
-    printf("Primer elemento de A izquierdo: %0.f\n", A[left_start]);
-    printf("Primer elemento de A derecho: %0.f\n", A[right_start]);
+    //printf("Primer elemento de A izquierdo: %0.f\n", A[left_start]);
+    //printf("Primer elemento de A derecho: %0.f\n", A[right_start]);
 
     while (left_start < mid_index && right_start < end_index)
     {
@@ -119,7 +119,7 @@ void merge(double *A, double *B, int start_index, int mid_index, int end_index)
     for (int i = start_index; i < end_index; i++)
     {
         A[i] = B[i];
-        printf("A[i]: %0.f\n", A[i]);
+        //printf("A[i]: %0.f\n", A[i]);
     }
 }
 
@@ -167,11 +167,12 @@ int main(int argc, char *argv[])
         }
 
         // Imprimir el arreglo original
-        for (int i = 0; i < N; i++)
+        /*for (int i = 0; i < N; i++)
         {
             printf("%.0f ", A[i]);
         }
         printf("\n");
+        */
 
         start_time = dwalltime(); // Iniciar el cronómetro
     }
@@ -192,7 +193,7 @@ int main(int argc, char *argv[])
         if (rank % comparison_factor == 0)
         {
             int partner = rank + comparison_factor / 2;
-            printf("IF rank: %d, partner: %d\n", rank, partner);
+            //printf("IF rank: %d, partner: %d\n", rank, partner);
 
             if (partner < size)
             {
@@ -204,6 +205,7 @@ int main(int argc, char *argv[])
                 // Recibir los datos del proceso compañero
                 MPI_Recv(local_A + mid_index, section_size / 2, MPI_DOUBLE, partner, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
 
+                /*
                 printf("rank: %d recibió: ", rank);
                 for (int i = start_index; i < mid_index; i++)
                 {
@@ -215,6 +217,7 @@ int main(int argc, char *argv[])
                     printf("%.0f ", local_A[i]);
                 }
                 printf("\n");
+                */
 
                 if (remaining_processes > 2)
                 {
@@ -225,8 +228,8 @@ int main(int argc, char *argv[])
         else
         {
             int partner = rank - comparison_factor / 2;
-            printf("ELSE rank: %d, partner: %d\n", rank, partner);
-            printf(" local_N * comparison_factor: %d\n", local_N * comparison_factor);
+            //printf("ELSE rank: %d, partner: %d\n", rank, partner);
+            //printf(" local_N * comparison_factor: %d\n", local_N * comparison_factor);
             // Enviar mis datos al proceso compañero
             MPI_Send(local_A, (local_N * comparison_factor) / 2, MPI_DOUBLE, partner, 0, MPI_COMM_WORLD);
             break;
@@ -268,12 +271,13 @@ int main(int argc, char *argv[])
             printf("Son distintos\n");
         }
 
+        /*
         // Imprimir el arreglo ordenado
         for (int i = 0; i < N; i++)
         {
             printf("%.0f ", local_A[i]);
         }
-        printf("\n");
+        printf("\n");*/
     }
 
     // Liberar la memoria
