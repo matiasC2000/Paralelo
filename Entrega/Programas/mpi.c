@@ -116,15 +116,15 @@ void merge(double *A, double *B, int start_index, int mid_index, int end_index)
     }
 }
 
-void funcionComun(int rank, int size, int N, double *A, double *local_A, double *local_B)
+void funcionComun(int rank, int size, int N, double *local_vector, double *local_axi)
 {
     int local_N = N / size; // Calcular el tamaño de la porción local
 
     // Dividir el trabajo entre los procesos
-    MPI_Scatter(A, local_N, MPI_DOUBLE, local_A, local_N, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+    MPI_Scatter(local_vector, local_N, MPI_DOUBLE, local_vector, local_N, MPI_DOUBLE, 0, MPI_COMM_WORLD);
 
     // Ordenar la sección local del arreglo
-    merge_sort(local_A, local_B, local_N);
+    merge_sort(local_vector, local_axi, local_N);
 
     int remaining_processes = size;
     int comparison_factor = 1;
@@ -145,15 +145,15 @@ void funcionComun(int rank, int size, int N, double *A, double *local_A, double 
                 int end_index = start_index + section_size;     // 0 + 4 = 4 8
 
                 // Recibir los datos del proceso compañero
-                MPI_Recv(local_A + mid_index, section_size / 2, MPI_DOUBLE, partner, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-                merge(local_A, local_B, start_index, mid_index, end_index);
+                MPI_Recv(local_vector + mid_index, section_size / 2, MPI_DOUBLE, partner, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+                merge(local_vector, local_axi, start_index, mid_index, end_index);
             }
         }
         else
         {
             int partner = rank - comparison_factor / 2;
             //  Enviar mis datos al proceso compañero
-            MPI_Send(local_A, (local_N * comparison_factor) / 2, MPI_DOUBLE, partner, 0, MPI_COMM_WORLD);
+            MPI_Send(local_vector, (local_N * comparison_factor) / 2, MPI_DOUBLE, partner, 0, MPI_COMM_WORLD);
             break;
         }
 
@@ -164,10 +164,8 @@ void funcionComun(int rank, int size, int N, double *A, double *local_A, double 
 void checkIguales(int rank, int size, int N, int *global_iguales, double *local_A, double *local_B){
     int local_iguales = 1;
     int local_N = N / size; // Calcular el tamaño de la porción local
-    MPI_Scatter(local_A, local_N / 2, MPI_DOUBLE, local_A, local_N / 2, MPI_DOUBLE, 0, MPI_COMM_WORLD);
-    MPI_Scatter(local_B, local_N / 2, MPI_DOUBLE, local_B, local_N / 2, MPI_DOUBLE, 0, MPI_COMM_WORLD);
-    MPI_Scatter(local_A + N / 2, local_N / 2, MPI_DOUBLE, local_A + N / 2, local_N / 2, MPI_DOUBLE, 0, MPI_COMM_WORLD);
-    MPI_Scatter(local_B + N / 2, local_N / 2, MPI_DOUBLE, local_B + N / 2, local_N / 2, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+    MPI_Scatter(local_A, local_N , MPI_DOUBLE, local_A, local_N , MPI_DOUBLE, 0, MPI_COMM_WORLD);
+    MPI_Scatter(local_B, local_N , MPI_DOUBLE, local_B, local_N , MPI_DOUBLE, 0, MPI_COMM_WORLD);
 
     // Verificar si las dos mitades del arreglo son iguales
     for (int i = 0; i < local_N; i++)
@@ -178,37 +176,64 @@ void checkIguales(int rank, int size, int N, int *global_iguales, double *local_
             break;
         }
     }
+    printf("A: \n");
+    for(int i = 0; i < local_N; i++){
+        printf("%.0f, ",local_A[i]);
+    }
+    printf("\n");
+    printf("B: \n");
+    for(int i = 0; i < local_N; i++){
+        printf("%.0f, ",local_B[i]);
+    }
+    printf("\n");
 
     MPI_Reduce(&local_iguales, global_iguales, 1, MPI_INT, MPI_LAND, 0, MPI_COMM_WORLD);
 }
 
 void proceso0(int rank, int N, int size, double *local_A, double *local_B, double *local_axi)
 {
-    double *A,*B;
     double start_time, end_time;
     int global_iguales;
 
-    // Reservar memoria para los arreglos
-    A = (double *)malloc(sizeof(double) * N);
-    B = (double *)malloc(sizeof(double) * N);
     // Inicializar el generador de números aleatorios y el arreglo A en el proceso principal
     srand(time(NULL));
     for (int i = 0; i < N ; i++)
     {
-        A[i] = (double)(rand() % 100); // Llenar la primera mitad del arreglo A con valores aleatorios
-        B[i] = A[i];           // Copiar la primera mitad del arreglo A a la segunda mitad
+        local_A[i] = (double)(rand() % 100); // Llenar la primera mitad del arreglo A con valores aleatorios
+        local_B[i] = local_A[i];           // Copiar la primera mitad del arreglo local_A a la segunda mitad
     }
+    printf("local_A: \n");
+    for(int i = 0; i < N; i++){
+        printf("%.0f, ",local_A[i]);
+    }
+    printf("\n");
+    printf("B: \n");
+    for(int i = 0; i < N; i++){
+        printf("%.0f, ",local_B[i]);
+    }
+    printf("\n");
 
     start_time = dwalltime(); // Iniciar el cronómetro
 
-    funcionComun(rank, size, N, A, local_A, local_axi);
-    funcionComun(rank, size, N, B, local_B, local_axi);
+    funcionComun(rank, size, N, local_A, local_axi);
+    funcionComun(rank, size, N, local_B, local_axi);
     checkIguales(rank, size,  N,&global_iguales, local_A, local_B);
 
     //funcionComun(rank, size, N, &global_iguales, A, local_A, local_axi);
 
     end_time = dwalltime(); // Detener el cronómetro
     printf("Tiempo en segundos usando MPI: %f\n", end_time - start_time);
+
+    printf("A: \n");
+    for(int i = 0; i < N; i++){
+        printf("%.0f, ",local_A[i]);
+    }
+    printf("\n");
+    printf("B: \n");
+    for(int i = 0; i < N; i++){
+        printf("%.0f, ",local_B[i]);
+    }
+    printf("\n");
 
     // Imprimir el resultado de la verificación
     if (global_iguales)
@@ -219,16 +244,13 @@ void proceso0(int rank, int N, int size, double *local_A, double *local_B, doubl
     {
         printf("Son distintos\n");
     }
-
-    // Liberar la memoria
-    free(A);
 }
 
 void procesoOtros(int rank, int N, int size, double *local_A, double *local_B, double *local_axi)
 {
-    funcionComun(rank, size, N, NULL, local_A, local_axi);
-    funcionComun(rank, size, N, NULL, local_B, local_axi);
-    checkIguales(rank, size, N,NULL, local_A, local_B);
+    funcionComun(rank, size, N,local_A, local_axi);
+    funcionComun(rank, size, N,local_B, local_axi);
+    checkIguales(rank, size, N,NULL,local_A, local_B);
 }
 
 int main(int argc, char *argv[])
